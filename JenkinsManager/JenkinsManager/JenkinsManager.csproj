@@ -50,6 +50,8 @@
     <Compile Include="JenkinsWindowControl.xaml.cs">
       <DependentUpon>JenkinsWindowControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Models\Job.cs" />
+    <Compile Include="Models\JobProperty.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="JenkinsManagerPackage.cs" />
   </ItemGroup>

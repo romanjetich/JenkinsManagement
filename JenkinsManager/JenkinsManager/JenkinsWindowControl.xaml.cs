@@ -1,12 +1,13 @@
 ﻿namespace JenkinsManager
 {
+    using JenkinsManager.Models;
     using JenkinsNET;
     using JenkinsNET.Models;
     using JenkinsNET.Utilities;
     using System;
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Diagnostics.CodeAnalysis;
-    using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Controls;
     using System.Xml.Linq;
@@ -18,14 +19,16 @@
     {
         JenkinsClient jenkinsClient = null;
         JenkinsJobRunner jenkinsJobRunner = null;
-        Dictionary<string, List<ParameterFields>> jobData = new Dictionary<string, List<ParameterFields>>();
-        List<ParameterFields> fields;
+        Dictionary<string, List<JobProperty>> jobData = new Dictionary<string, List<JobProperty>>();
+        List<JobProperty> fields;
         /// <summary>
         /// Initializes a new instance of the <see cref="JenkinsWindowControl"/> class.
         /// </summary>
         public JenkinsWindowControl()
         {
-            this.InitializeComponent();
+            InitializeComponent();
+            DataContext = this;
+
             jenkinsClient = new JenkinsClient
             {
                 BaseUrl = "http://localhost:8080/",
@@ -33,13 +36,19 @@
                 ApiToken = "118a716bc175f3a101c1e063e299d073a4",
             };
             var jenkins = jenkinsClient.Get();
-            this.jobs.SelectionChanged += Jobs_SelectionChanged;
-            this.ParamName.SelectionChanged += ParamName_SelectionChanged;
+
+            List<Job> jobList = new List<Job>();
+            foreach (var job in jenkins.Jobs)
+            {
+                jobList.Add(new Job { Name = job.Name});
+            }
+
+            Jobs = new ObservableCollection<Job>(jobList);
+            JobCombo.SelectedItem = Jobs[0];
 
             foreach (var job in jenkins.Jobs)
             {
-                fields = new List<ParameterFields>();
-                this.jobs.Items.Add(job.Name);
+                fields = new List<JobProperty>();
                 JenkinsJobBase jenkinsJob = jenkinsClient.Jobs.Get<JenkinsJobBase>(job.Name) as JenkinsJobBase;
                 foreach (var action in jenkinsJob.Actions)
                 {
@@ -47,66 +56,37 @@
                 }
                 jobData[job.Name] = fields;
             }
-            if(this.jobs.Items.Count > 0)
-            {
-                this.jobs.SelectedIndex = 0;
-                string firstJob = this.jobs.SelectedValue.ToString();
-                if (jobData[firstJob].Count > 0)
-                {
-                    foreach (var param in jobData[firstJob])
-                    {
-                        this.ParamName.Items.Add(param.Name);
-                    }
-
-                    this.ParamName.SelectedIndex = 0;
-                    this.ParamValue.Text = jobData[firstJob][0].DefaultValue;
-                }
-                else
-                {
-                    this.ParamName.IsEnabled = false;
-                    this.ParamValue.IsEnabled = false;
-                    this.btnAddParam.IsEnabled = false;
-                }
-            }
         }
 
-        private void ParamName_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        public ObservableCollection<Job> Jobs
         {
-            if (((ComboBox)sender).Items.Count == 0) return;
-            var jobName = jobs.SelectedValue.ToString();
-            var paramName = ((ComboBox)sender).SelectedValue.ToString();
-            foreach (var param in jobData[jobName])
-            {
-                if(param.Name == paramName)
-                {
-                    ParamValue.Text = param.DefaultValue;
-                }
-            }
+            get { return (ObservableCollection<Job>)GetValue(JobsProperty); }
+            set { SetValue(JobsProperty, value); }
         }
+
+        public static readonly DependencyProperty JobsProperty =
+            DependencyProperty.Register("Jobs",
+            typeof(ObservableCollection<Job>),
+            typeof(JenkinsWindowControl),
+            new PropertyMetadata(null));
+
+        public Job SelectedJob
+        {
+            get { return (Job)GetValue(SelectedJobProperty); }
+            set { SetValue(SelectedJobProperty, value); }
+        }
+
+        public static readonly DependencyProperty SelectedJobProperty =
+            DependencyProperty.Register("SelectedJob",
+            typeof(Job),
+            typeof(JenkinsWindowControl),
+            new PropertyMetadata(null));
+
 
         private void Jobs_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var jobName = ((ComboBox)sender).SelectedValue.ToString();
-            this.ParamName.Items.Clear();
-            this.ParamName.Text = "";
-            this.ParamValue.Text = "";
-
-            if (jobData[jobName].Count > 0)
-            {
-                foreach (var param in jobData[jobName])
-                {
-                    this.ParamName.Items.Add(param.Name);
-                }
-
-                this.ParamName.SelectedIndex = 0;
-                this.ParamValue.Text = jobData[jobName][0].DefaultValue;
-            }
-            else
-            {
-                this.ParamName.IsEnabled = false;
-                this.ParamValue.IsEnabled = false;
-                this.btnAddParam.IsEnabled = false;
-            }
+            SelectedJob = JobCombo.SelectedItem as Job;
+            SelectedJob.JobProperties = new ObservableCollection<JobProperty>(jobData[SelectedJob.Name]);
         }
 
         private void FindAllNodes(XNode node)
@@ -118,24 +98,25 @@
                 var element = node as XElement;
                 if (element == null) return;
                 var firstNode = element.FirstNode as XElement;
-                if (firstNode == null) {
+                if (firstNode == null)
+                {
                     FindAllNodes(element.NextNode);
                     return;
                 }
 
                 if (firstNode.Name.LocalName == "parameterDefinition")
                 {
-                    ParameterFields field = new ParameterFields();
+                    JobProperty field = new JobProperty();
                     FindAllNodes(firstNode, ref field);
                 }
                 else
                 {
                     FindAllNodes(element.NextNode);
-                }                  
-            }            
+                }
+            }
         }
 
-        private void FindAllNodes(XNode node, ref ParameterFields field)
+        private void FindAllNodes(XNode node, ref JobProperty field)
         {
             if (node == null) return;
 
@@ -146,44 +127,41 @@
             var value = firstNode?.Value;
             if (firstNode.Name.LocalName.ToLowerInvariant().Contains("name"))
             {
-                field.Name = value;
+                field.Key = value;
             }
             else if (firstNode.Name.LocalName.ToLowerInvariant().Contains("value"))
             {
-                if (field.DefaultValue == value)
+                if (field.Value == value)
                 {
                     field.FieldType = element.FirstAttribute.Value.ToString();
                     FillField(element.NextNode, ref field);
                     FillField(element.NextNode.NextNode, ref field);
                     fields.Add(field);
-                    field = new ParameterFields();
+                    field = new JobProperty();
                     FindAllNodes(element.Parent.NextNode, ref field);
                     return;
                 }
                 else
                 {
-                    field.DefaultValue = value;
+                    field.Value = value;
                 }
-
             }
-            
-            FindAllNodes(firstNode, ref field);
-            //FindAllNodes(element.NextNode, ref field);
 
+            FindAllNodes(firstNode, ref field);
         }
 
-        private void FillField(XNode node, ref ParameterFields field)
+        private void FillField(XNode node, ref JobProperty field)
         {
             if (node == null) return;
 
             var element = node as XElement;
             if (element.Name.LocalName.ToLowerInvariant().Contains("name"))
             {
-                field.Name = element.Value;
+                field.Key = element.Value;
             }
             else if (element.Name.LocalName.ToLowerInvariant().Contains("value"))
             {
-                field.DefaultValue = element.Value;
+                field.Value = element.Value;
             }
             else if (element.Name.LocalName.ToLowerInvariant().Contains("description"))
             {
@@ -200,15 +178,38 @@
         [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:ElementMustBeginWithUpperCaseLetter", Justification = "Default event handler naming pattern")]
         private async void button1_Click(object sender, RoutedEventArgs e)
         {
-            jenkinsJobRunner = new JenkinsJobRunner(jenkinsClient) {
-                BuildTimeout = 60 * 60
-            };
+            try
+            {
+                jenkinsJobRunner = new JenkinsJobRunner(jenkinsClient)
+                {
+                    BuildTimeout = 60 * 60
+                };
 
-            jenkinsJobRunner.StatusChanged += JenkinsJobRunner_StatusChanged;
-            jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: start");
-            var result = await jenkinsJobRunner.RunAsync(this.jobs.SelectedValue.ToString());
-            jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Duration {result.Duration} ms");
-            jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Result {result.Result}");
+                jenkinsJobRunner.StatusChanged += JenkinsJobRunner_StatusChanged;
+
+                string jobName = JobCombo.SelectedValue.ToString();
+                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: start {jobName}");
+                JenkinsBuildBase result = null;
+                if (jobData[jobName].Count == 0)
+                {
+                    result = await jenkinsJobRunner.RunAsync(jobName);
+                }
+                else
+                {
+                    Dictionary<string, string> parameters = new Dictionary<string, string>();
+                    foreach (var jobProperty in SelectedJob.JobProperties)
+                    {
+                        parameters[jobProperty.Key] = jobProperty.Value;
+                    }
+                    result = await jenkinsJobRunner.RunWithParametersAsync(jobName, parameters);
+                }
+                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Duration {result.Duration} ms");
+                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Result {result.Result}");
+            }
+            catch (Exception ex)
+            {
+                var t = ex;
+            }
         }
 
         private void JenkinsJobRunner_StatusChanged()
@@ -216,17 +217,8 @@
             jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: {jenkinsJobRunner.Status}");
         }
 
-        internal class ParameterFields
+        private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string DefaultValue { get; set; }
-            public string FieldType { get; set; }
-        }
-
-        private void BtnAddParam_Click(object sender, RoutedEventArgs e)
-        {
-            if (ParamValue.Text == "") MessageBox.Show("Value darf nicht leer sein");
         }
     }
 }

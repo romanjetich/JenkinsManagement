@@ -4,32 +4,71 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vsshell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
-             Background="{DynamicResource {x:Static vsshell:VsBrushes.WindowKey}}"
-             Foreground="{DynamicResource {x:Static vsshell:VsBrushes.WindowTextKey}}"
-             mc:Ignorable="d"
-             d:DesignHeight="400" d:DesignWidth="300"
-             Name="JenkinsManagerWindow">
-    <Grid>
-        <StackPanel Orientation="Vertical" CanVerticallyScroll="True" Margin="0,0,0,0">
+             mc:Ignorable="d" 
+             d:DesignWidth="300"
+             VerticalAlignment="Top"
+             Name="JenkinsManagerWindow" 
+             Height="432">
+    <Grid Width="300">
+        <!--<Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>-->
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="0*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Vertical" CanVerticallyScroll="True" Grid.ColumnSpan="2" Margin="0,0,0,0">
             <Label x:Name="label" Content="Please select a job" HorizontalAlignment="Left" Width="252" Margin="10,2,10,2"/>
-            <ComboBox x:Name="jobs" Margin="10,2,10,2" HorizontalAlignment="Left" Width="280"/>
+            <ComboBox x:Name="JobCombo" 
+                      Margin="10,2,10,2" 
+                      HorizontalAlignment="Left" 
+                      Width="280"
+                      Grid.Column="1"
+                      ItemsSource="{Binding Jobs}"
+                      DisplayMemberPath="Name"
+                      SelectedValuePath="Name"
+                      SelectionChanged="Jobs_SelectionChanged"
+                      />
             <Button Content="Start job" Click="button1_Click" Height="24" x:Name="button1" Margin="10,5,10,2" HorizontalAlignment="Left" Width="280" />
             <Label Content="Parameters" HorizontalAlignment="Left" Width="252" Margin="10,0,10,0"/>
-            <ListBox x:Name="jobActions" Height="80" Margin="10,0,10,0"/>
-            <StackPanel Orientation="Horizontal">
-                <StackPanel Orientation="Vertical">
-                    <Label Content="Name" HorizontalAlignment="Left" Width="100" Margin="10,0,2,0"/>
-                    <ComboBox x:Name="ParamName" Margin="10,0,2,0" HorizontalAlignment="Left" Width="100"/>
-                </StackPanel>
-                <StackPanel Orientation="Vertical">
-                    <Label Content="Value" HorizontalAlignment="Left" Width="100" Margin="5,0,2,0"/>
-                    <TextBox x:Name="ParamValue" HorizontalAlignment="Left" Width="100" Margin="5,0,2,0" Height="22"/>
-                </StackPanel>
-                <StackPanel Orientation="Vertical">
-                    <Label Content="" HorizontalAlignment="Left" Width="0" Margin="5,0,2,0"/>
-                    <Button x:Name="btnAddParam" Content="Add" HorizontalAlignment="Left" Width="63" Margin="5,0,2,0" Height="22" Click="BtnAddParam_Click"/>
-                </StackPanel>
-            </StackPanel>
+            <DataGrid x:Name="dataGrid" 
+                      Height="120" 
+                      Margin="10,5,10,0"  
+                      ColumnWidth="*" 
+                      AutoGenerateColumns="False" 
+                      ItemsSource="{Binding SelectedJob.JobProperties}"
+                      IsSynchronizedWithCurrentItem="True"
+                      SelectionMode="Single" 
+                      SelectionUnit="Cell" BeginningEdit="DataGrid_BeginningEdit">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Key" MinWidth="100" Width="Auto" IsReadOnly="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Key}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding Key}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Value" MinWidth="100" Width="*"  IsReadOnly="False" >
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Value}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding Value}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
             <Label Content="Job infos" HorizontalAlignment="Left" Width="252" Margin="10,5,10,0"/>
             <ListBox x:Name="jobInfos" Height="100" Margin="10,0,10,2"/>
         </StackPanel>
