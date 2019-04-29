@@ -58,7 +58,7 @@
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\JenkinsWindowCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
+      <Bitmap guid="guidImages" href="..\Resources\JenkinsWindowCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
     </Bitmaps>
   </Commands>
 
@@ -70,6 +70,7 @@
     <GuidSymbol name="guidJenkinsManagerPackageCmdSet" value="{e7110466-5b64-4212-9e72-11483d562e38}">
       <IDSymbol name="JenkinsWindowCommandId" value="0x0100" />
     </GuidSymbol>
+
 
     <GuidSymbol name="guidImages" value="{9f6751e8-eda1-48ef-89ad-c0766c34dea8}" >
       <IDSymbol name="bmpPic1" value="1" />

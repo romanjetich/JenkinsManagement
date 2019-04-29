@@ -1,6 +1,8 @@
 ﻿namespace JenkinsManager
 {
     using JenkinsManager.Models;
+    using JenkinsManager.Options;
+    using JenkinsManager.Windows;
     using JenkinsNET;
     using JenkinsNET.Models;
     using JenkinsNET.Utilities;
@@ -10,6 +12,7 @@
     using System.Diagnostics.CodeAnalysis;
     using System.Windows;
     using System.Windows.Controls;
+    using System.Windows.Media;
     using System.Xml.Linq;
 
     /// <summary>
@@ -21,30 +24,34 @@
         JenkinsJobRunner jenkinsJobRunner = null;
         Dictionary<string, List<JobProperty>> jobData = new Dictionary<string, List<JobProperty>>();
         List<JobProperty> fields;
+        private readonly JenkinsWindow jenkinsWindow;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="JenkinsWindowControl"/> class.
         /// </summary>
-        public JenkinsWindowControl()
+        public JenkinsWindowControl(JenkinsWindow jenkinsWindow)
         {
+            this.jenkinsWindow = jenkinsWindow;
             InitializeComponent();
             DataContext = this;
+            Loaded += JenkinsWindowLoaded;
+        }
 
+        private void JenkinsWindowLoaded(object sender, System.Windows.RoutedEventArgs e)
+        {
             jenkinsClient = new JenkinsClient
             {
-                BaseUrl = "http://localhost:8080/",
-                UserName = "admin",
-                ApiToken = "118a716bc175f3a101c1e063e299d073a4",
+                BaseUrl = $"http://{Host}:{Port}/",
+                UserName = User,
+                ApiToken = ApiKey,
             };
             var jenkins = jenkinsClient.Get();
 
             List<Job> jobList = new List<Job>();
             foreach (var job in jenkins.Jobs)
             {
-                jobList.Add(new Job { Name = job.Name});
+                jobList.Add(new Job { Name = job.Name });
             }
-
-            Jobs = new ObservableCollection<Job>(jobList);
-            JobCombo.SelectedItem = Jobs[0];
 
             foreach (var job in jenkins.Jobs)
             {
@@ -56,8 +63,32 @@
                 }
                 jobData[job.Name] = fields;
             }
+
+            ListBinding = new ObservableCollection<ListEntry>();
+
+            Jobs = new ObservableCollection<Job>(jobList);
+            JobCombo.SelectedItem = Jobs[0];
         }
 
+        private JenkinsManagerPackage Package => jenkinsWindow.Package as JenkinsManagerPackage;
+        private string Host => (Package?.GetDialogPage(typeof(OptionPage))
+            as OptionPage)?.Host ?? "https://localhost";
+
+        private int Port => (Package?.GetDialogPage(typeof(OptionPage))
+            as OptionPage)?.Port ?? 8080;
+
+        private string User => (Package?.GetDialogPage(typeof(OptionPage))
+            as OptionPage)?.User ?? "admin";
+
+        private string ApiKey => (Package?.GetDialogPage(typeof(OptionPage))
+            as OptionPage)?.Key ?? "";
+
+        public Window GetWindow()
+        {
+            return Window.GetWindow(this);
+        }
+
+        public ObservableCollection<ListEntry> ListBinding { get; set; }
         public ObservableCollection<Job> Jobs
         {
             get { return (ObservableCollection<Job>)GetValue(JobsProperty); }
@@ -188,7 +219,7 @@
                 jenkinsJobRunner.StatusChanged += JenkinsJobRunner_StatusChanged;
 
                 string jobName = JobCombo.SelectedValue.ToString();
-                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: start {jobName}");
+                ListBinding.Add(new ListEntry { Message = $"start {jobName}" });
                 JenkinsBuildBase result = null;
                 if (jobData[jobName].Count == 0)
                 {
@@ -203,8 +234,9 @@
                     }
                     result = await jenkinsJobRunner.RunWithParametersAsync(jobName, parameters);
                 }
-                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Duration {result.Duration} ms");
-                jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: Result {result.Result}");
+
+                ListBinding.Add(new ListEntry { Message = $"Duration { result.Duration } ms" });
+                ListBinding.Add(new ListEntry { Message = $"Result {result.Result}" });
             }
             catch (Exception ex)
             {
@@ -214,11 +246,60 @@
 
         private void JenkinsJobRunner_StatusChanged()
         {
-            jobInfos.Items.Add($"{DateTime.Now.ToLongTimeString()}: {jenkinsJobRunner.Status}");
+            ListBinding.Add(new ListEntry { Message = $"{jenkinsJobRunner.Status}" });
         }
 
         private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
         }
+
+        private void ButtonSettings_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsWindow wnd = new SettingsWindow();
+        }
+
+        private void ListBoxJobInfos_Loaded(object sender, RoutedEventArgs e)
+        {
+            var listBox = (ListBox)sender;
+            var scrollViewer = FindScrollViewer(listBox);
+
+            if (scrollViewer != null)
+            {
+                scrollViewer.ScrollChanged += (o, args) =>
+                {
+                    if (args.ExtentHeightChange > 0)
+                        scrollViewer.ScrollToBottom();
+                };
+            }
+        }
+
+        private static ScrollViewer FindScrollViewer(DependencyObject root)
+        {
+            var queue = new Queue<DependencyObject>(new[] { root });
+
+            do
+            {
+                var item = queue.Dequeue();
+
+                if (item is ScrollViewer)
+                    return (ScrollViewer)item;
+
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(item); i++)
+                    queue.Enqueue(VisualTreeHelper.GetChild(item, i));
+            } while (queue.Count > 0);
+
+            return null;
+        }
+
+        
+    }
+    public class ListEntry
+    {
+        public ListEntry()
+        {
+            this.Timestamp = DateTime.Now.ToLongTimeString() + ": ";
+        }
+        public string Timestamp { get; private set; }
+        public string Message { get; set; }
     }
 }

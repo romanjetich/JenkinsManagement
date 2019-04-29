@@ -1,8 +1,17 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.ComponentModel;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
+
+using Microsoft.VisualStudio.Settings;
+using Microsoft.VisualStudio.Shell.Settings;
+using System.Threading.Tasks;
+using Microsoft;
+using Microsoft.VisualStudio.Shell.Interop;
+using System.Windows.Forms;
+using JenkinsManager.Options;
 
 namespace JenkinsManager
 {
@@ -24,9 +33,14 @@ namespace JenkinsManager
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
     [Guid(JenkinsManagerPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(JenkinsWindow))]
+    [ProvideOptionPage(typeof(OptionPage),
+    "Jenkins Manager", "Jenkins Settings", 0, 0, true)]
+    [ProvideProfileAttribute(typeof(OptionPage),
+    "Jenkins Manager", "Jenkins Settings", 106, 107, isToolsOptionPage: true, DescriptionResourceID = 108)]
     public sealed class JenkinsManagerPackage : AsyncPackage
     {
         /// <summary>
@@ -52,5 +66,26 @@ namespace JenkinsManager
         }
 
         #endregion
+
+        public string OptionHost
+        {
+            get
+            {
+                OptionPage page = (OptionPage)GetDialogPage(typeof(OptionPage));
+                return page.Host;
+            }
+        }
+
+        private static async Task<ShellSettingsManager> GetSettingsManagerAsync()
+        {
+#pragma warning disable VSTHRD010 
+            // False-positive in Threading Analyzers. Bug tracked here https://github.com/Microsoft/vs-threading/issues/230
+            var svc = await AsyncServiceProvider.GlobalProvider.GetServiceAsync(typeof(SVsSettingsManager)) as IVsSettingsManager;
+#pragma warning restore VSTHRD010 
+
+            Assumes.Present(svc);
+
+            return new ShellSettingsManager(svc);
+        }
     }
 }

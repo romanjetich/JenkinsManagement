@@ -16,8 +16,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>-->
         <Grid.ColumnDefinitions>
+            
+            <ColumnDefinition Width="auto"/>
             <ColumnDefinition/>
-            <ColumnDefinition Width="0*"/>
         </Grid.ColumnDefinitions>
         <StackPanel Orientation="Vertical" CanVerticallyScroll="True" Grid.ColumnSpan="2" Margin="0,0,0,0">
             <Label x:Name="label" Content="Please select a job" HorizontalAlignment="Left" Width="252" Margin="10,2,10,2"/>
@@ -35,7 +36,7 @@
             <Label Content="Parameters" HorizontalAlignment="Left" Width="252" Margin="10,0,10,0"/>
             <DataGrid x:Name="dataGrid" 
                       Height="120" 
-                      Margin="10,5,10,0"  
+                      Margin="10,0,10,0"  
                       ColumnWidth="*" 
                       AutoGenerateColumns="False" 
                       ItemsSource="{Binding SelectedJob.JobProperties}"
@@ -70,7 +71,17 @@
                 </DataGrid.Columns>
             </DataGrid>
             <Label Content="Job infos" HorizontalAlignment="Left" Width="252" Margin="10,5,10,0"/>
-            <ListBox x:Name="jobInfos" Height="100" Margin="10,0,10,2"/>
+            <ListBox x:Name="ListBoxJobInfos" Height="156" Margin="10,0,10,2" ItemsSource="{Binding ListBinding}" Loaded="ListBoxJobInfos_Loaded">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Path=Timestamp}" />
+                            <TextBlock Text="{Binding Path=Message}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            
         </StackPanel>
     </Grid>
 </UserControl>
