@@ -34,6 +34,8 @@
             this.jenkinsWindow = jenkinsWindow;
             InitializeComponent();
             DataContext = this;
+            ListBinding = new ObservableCollection<ListEntry>();
+
             Loaded += JenkinsWindowLoaded;
         }
 
@@ -64,8 +66,7 @@
                 jobData[job.Name] = fields;
             }
 
-            ListBinding = new ObservableCollection<ListEntry>();
-
+            
             Jobs = new ObservableCollection<Job>(jobList);
             JobCombo.SelectedItem = Jobs[0];
         }
